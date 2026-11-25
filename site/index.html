@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="assets/img/logo-eti.svg">
+<title>Entrar — ETI</title>
+<link href="assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+<link href="assets/vendor/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet">
+<link href="assets/css/eti.css" rel="stylesheet">
+</head>
+<body>
+
+<main class="entrar">
+  <form id="form-login">
+    <img src="assets/img/logo-eti.svg" alt="" width="72" class="d-block mb-4">
+    <h1>Escola Tecnológica Inteligente</h1>
+
+    <div class="mt-4 mb-3">
+      <label class="form-label" for="email">E-mail institucional</label>
+      <input class="form-control" type="email" id="email" autocomplete="username" required>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label" for="senha">Senha</label>
+      <input class="form-control" type="password" id="senha" autocomplete="current-password" required>
+    </div>
+
+    <button type="submit" class="btn btn-primary w-100 py-2" id="btn-entrar">
+      <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Entrar
+    </button>
+
+    <p class="legenda mt-3" id="erro" role="alert" hidden></p>
+
+  </form>
+</main>
+
+<script>window.ETI_PAGINA_LOGIN = true;</script>
+<script src="assets/vendor/firebase/firebase-app-compat.js"></script>
+<script src="assets/vendor/firebase/firebase-auth-compat.js"></script>
+<script src="assets/vendor/firebase/firebase-database-compat.js"></script>
+<script src="assets/js/firebase-config.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/data.js"></script>
+<script>
+// Já entrou antes neste navegador: vai direto para a sala.
+ETI.auth.onUsuario(function (u) {
+  if (u && ETI.ui.sessao()) location.replace('dashboard.html');
+});
+
+const NOMES = { gestor: 'gestor', professor: 'professor' };
+
+function mostrarErro(texto) {
+  const erro = document.getElementById('erro');
+  erro.textContent = texto;
+  erro.hidden = false;
+  document.getElementById('btn-entrar').disabled = false;
+}
+
+document.getElementById('form-login').addEventListener('submit', function (e) {
+  e.preventDefault();
+  const escolhido = document.querySelector('input[name="perfil"]:checked').value;
+  const email = document.getElementById('email').value.trim();
+  document.getElementById('erro').hidden = true;
+  document.getElementById('btn-entrar').disabled = true;
+
+  // 1. O Firebase confere e-mail e senha. 2. Lê o perfil da conta (perfis/<uid>).
+  // 3. Só entra se o perfil marcado na tela for o da conta.
+  ETI.auth.entrar(email, document.getElementById('senha').value)
+    .then(function (cred) { return ETI.auth.perfil(cred.user.uid); })
+    .then(function (perfil) {
+      if (perfil !== escolhido) {
+        return firebase.auth().signOut().then(function () {
+          mostrarErro('Esta conta é de ' + NOMES[perfil] + '. Marque "' +
+            (perfil === 'gestor' ? 'Gestor' : 'Professor') + '" para entrar.');
+        });
+      }
+      localStorage.setItem('eti:sessao', JSON.stringify({ perfil: perfil, email: email, entrouEm: Date.now() }));
+      location.href = 'dashboard.html';
+    })
+    .catch(function (err) {
+      const msgs = {
+        'auth/invalid-credential': 'E-mail ou senha incorretos.',
+        'auth/invalid-login-credentials': 'E-mail ou senha incorretos.',
+        'auth/wrong-password': 'E-mail ou senha incorretos.',
+        'auth/user-not-found': 'E-mail ou senha incorretos.',
+        'auth/invalid-email': 'Esse e-mail não é válido.',
+        'auth/too-many-requests': 'Muitas tentativas. Espere um pouco e tente de novo.',
+        'auth/network-request-failed': 'Sem internet para falar com o Firebase.'
+      };
+      mostrarErro(msgs[err.code] || 'Não deu para entrar (' + (err.code || err.message) + ').');
+    });
+});
+</script>
+</body>
+</html>

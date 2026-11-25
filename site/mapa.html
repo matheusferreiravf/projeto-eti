@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="assets/img/logo-eti.svg">
+<title>Mapa — ETI</title>
+<link href="assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+<link href="assets/vendor/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet">
+<link href="assets/css/eti.css" rel="stylesheet">
+<style>
+  .pagina-mapa { max-width: 1440px; }
+  .mapa-tela { position: relative; padding: 16px; }
+  .row > * > .secao.mapa-tela { height: auto; }
+  .controles { padding-top: 8px; }
+  .controles > .bloco:first-child, .controles > .bloco[hidden] + .bloco { margin-top: 0; padding-top: 12px; border-top: 0; }
+  .como summary { cursor: pointer; font-weight: 600; color: var(--tinta); }
+  .como ol { margin-top: 8px; }
+  .controles .bloco + .bloco { margin-top: 14px; padding-top: 14px; }
+  @media (min-width: 992px) {
+    /* Mapa e controles ficam presos na tela: o mapa não some enquanto você usa os botões. */
+    .mapa-col, .controles-col { position: sticky; top: 16px; }
+    .controles { max-height: calc(100vh - 32px); overflow-y: auto; overscroll-behavior: contain; }
+  }
+  #mapa { display: block; width: 100%; aspect-ratio: 900 / 560; border-radius: 8px; background: #E9EEF7; touch-action: none; cursor: pointer; outline: none; }
+  #mapa:focus-visible { box-shadow: 0 0 0 3px var(--peri); }
+  .bonecos { display: flex; flex-wrap: wrap; gap: 8px; }
+  .bonecos button { display: inline-flex; align-items: center; gap: 8px; }
+  .bonecos .bola { width: 14px; height: 14px; border-radius: 50%; display: inline-block; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.2); }
+  .teclas { display: grid; grid-template-columns: repeat(3, 44px); gap: 6px; justify-content: center; }
+  .teclas button { height: 44px; padding: 0; }
+  .eventos-mapa { list-style: none; padding: 0; margin: 0; font-size: var(--t1); }
+  .eventos-mapa li { padding: 6px 0; border-bottom: 1px solid var(--linha); }
+  .eventos-mapa li span { color: var(--tinta-fraca); margin-right: 6px; }
+  .extras .bloco:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
+  .mensagens { background: var(--fundo); border-radius: 8px; max-height: 14em; overflow: auto; }
+</style>
+</head>
+<body>
+
+<div class="pagina pagina-mapa">
+
+  <div class="topo">
+    <a class="marca" href="dashboard.html"><img src="assets/img/logo-eti.svg" alt="">ETI</a>
+    <nav class="menu" data-menu aria-label="Seções"></nav>
+  </div>
+
+  <header class="cabecalho">
+    <h1>Mapa da sala</h1>
+    <p>Gêmeo digital: o que acontece aqui acontece na placa, e o que acontece na placa aparece aqui.</p>
+  </header>
+
+  <div class="row g-3 mb-3 align-items-start">
+
+    <div class="col-lg-8 mapa-col">
+      <section class="secao mapa-tela">
+        <canvas id="mapa" tabindex="0" aria-label="Mapa da sala. Use as setas para andar com o boneco escolhido."></canvas>
+        <p class="legenda mb-0 mt-2" id="dica"></p>
+      </section>
+    </div>
+
+    <div class="col-lg-4 controles-col">
+      <section class="secao controles">
+        <div class="bloco bloco-arduino" id="bloco-serial" hidden>
+          <h3>Arduino</h3>
+          <button type="button" class="btn btn-primary" id="btn-serial">
+            <i class="bi bi-usb-symbol" aria-hidden="true"></i> <span>Conectar Arduino</span>
+          </button>
+          <p class="legenda" id="erro-serial" hidden></p>
+        </div>
+
+        <div class="bloco">
+          <h3>Luz</h3>
+          <button type="button" class="btn btn-outline-primary" id="btn-fixa" disabled>
+            <i class="bi bi-lightbulb" aria-hidden="true"></i> <span>Deixar a luz sempre acesa</span>
+          </button>
+          <p class="legenda" id="nota-fixa" hidden>Luz fixa: o LED não apaga por inatividade, sala vazia
+            nem modo economia, até você soltar.</p>
+        </div>
+
+        <div class="bloco">
+          <h3>Bonecos</h3>
+          <p class="legenda mt-0 mb-2">Escolha um e ande com as setas, W A S D ou clicando no mapa.</p>
+          <div class="bonecos mb-3" id="lista-bonecos"></div>
+          <div class="teclas mb-2" aria-label="Setas na tela">
+            <span></span>
+            <button type="button" class="btn btn-outline-primary" data-tecla="ArrowUp" aria-label="Para cima"><i class="bi bi-arrow-up"></i></button>
+            <span></span>
+            <button type="button" class="btn btn-outline-primary" data-tecla="ArrowLeft" aria-label="Para a esquerda"><i class="bi bi-arrow-left"></i></button>
+            <button type="button" class="btn btn-outline-primary" data-tecla="ArrowDown" aria-label="Para baixo"><i class="bi bi-arrow-down"></i></button>
+            <button type="button" class="btn btn-outline-primary" data-tecla="ArrowRight" aria-label="Para a direita"><i class="bi bi-arrow-right"></i></button>
+          </div>
+        </div>
+
+        <div class="bloco">
+          <h3>Cenários de teste</h3>
+          <p class="legenda mt-0 mb-2">Situações prontas para mostrar como a sala reage.</p>
+          <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-outline-primary" id="cen-intruso"
+              title="Coloca na sala vazia uma pessoa que não passou cartão">
+              <i class="bi bi-incognito" aria-hidden="true"></i> <span>Intruso na sala</span>
+            </button>
+            <button type="button" class="btn btn-outline-danger" id="cen-limpar"
+              title="Apaga eventos, gráfico, cartões, bonecos e zera a contagem">
+              <i class="bi bi-trash3" aria-hidden="true"></i> Limpar tudo
+            </button>
+          </div>
+          <p class="legenda mt-2 mb-0" id="cenario-msg" role="status" hidden></p>
+        </div>
+
+        <div class="bloco">
+          <h3>Ar-condicionado</h3>
+          <p class="legenda mt-0" id="ar-estado">—</p>
+          <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+            <button type="button" class="btn btn-outline-primary" id="ar-menos" aria-label="Diminuir temperatura do ar"><i class="bi bi-dash-lg"></i></button>
+            <strong id="ar-setpoint" style="min-width: 4.5em; text-align: center">21 °C</strong>
+            <button type="button" class="btn btn-outline-primary" id="ar-mais" aria-label="Aumentar temperatura do ar"><i class="bi bi-plus-lg"></i></button>
+            <button type="button" class="btn btn-primary" id="ar-ligar"><i class="bi bi-snow" aria-hidden="true"></i> <span>Ligar</span></button>
+          </div>
+          <div class="form-check form-switch mb-2">
+            <input class="form-check-input" type="checkbox" role="switch" id="sim-ativa">
+            <label class="form-check-label" for="sim-ativa">Usar temperatura simulada</label>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <input class="form-control form-control-sm" type="number" min="0" max="50" step="0.5" id="sim-valor" style="width: 6em" aria-label="Temperatura simulada em graus">
+            <span>°C</span>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="sim-aplicar">Aplicar</button>
+          </div>
+        </div>
+
+        <div class="bloco">
+          <h3>Últimos acontecimentos</h3>
+          <ul class="eventos-mapa" id="eventos"></ul>
+        </div>
+
+        <details class="bloco como">
+          <summary>Como entrar e sair</summary>
+          <h3>Como entrar e sair</h3>
+          <ol class="legenda mt-0 ps-3">
+            <li>Passe o cartão do boneco no leitor de verdade: a porta do mapa abre.</li>
+            <li>Leve o boneco para dentro da sala: o sensor de presença cobre a sala toda.</li>
+            <li>O Arduino confirma a entrada e acende a lâmpada se estiver escuro. Se a sala passar do limite de calor, o ar liga.</li>
+            <li>Para sair, passe o mesmo cartão de novo: o boneco sai sozinho.</li>
+          </ol>
+        </details>
+      </section>
+    </div>
+
+  </div>
+
+  <section class="secao extras mb-3">
+    <h2>Arduino: testes e cartões</h2>
+    <p class="legenda mt-0">Ferramentas da placa que não ficam nas telas da sala.</p>
+
+    <div class="row g-4 mt-1">
+      <div class="col-lg-4">
+        <div class="bloco">
+          <h3>Teste e manutenção</h3>
+          <div class="d-flex flex-wrap gap-2 mt-2">
+            <button type="button" class="btn btn-outline-primary" id="btn-mov" disabled>
+              <i class="bi bi-person-walking" aria-hidden="true"></i> Simular movimento
+            </button>
+            <button type="button" class="btn btn-outline-primary" id="btn-zerar" disabled>
+              <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Zerar contagem
+            </button>
+          </div>
+          <p class="legenda" id="extras-msg" role="status" hidden></p>
+        </div>
+
+        <div class="bloco">
+          <h3>Quem está na sala</h3>
+          <div id="presentes"><p class="legenda mt-0">Carregando…</p></div>
+        </div>
+      </div>
+
+      <div class="col-lg-4">
+        <div class="bloco">
+          <h3>Cartões</h3>
+          <p class="legenda mt-0 mb-2">Dê um nome a cada cartão que já passou no leitor.</p>
+          <div id="cartoes"><p class="legenda mt-0">Carregando…</p></div>
+        </div>
+      </div>
+
+      <div class="col-lg-4">
+        <div class="bloco">
+          <h3>Ajustes da placa</h3>
+          <form id="form-ajustes">
+            <div class="row g-2 mb-2">
+              <div class="col-12">
+                <label class="form-label" for="aj-tempoInatividade">Apagar a luz sem movimento após (s)</label>
+                <input class="form-control form-control-sm" type="number" id="aj-tempoInatividade" min="5" max="3600" step="1">
+              </div>
+              <div class="col-6">
+                <label class="form-label" for="aj-capacidade">Capacidade (pessoas)</label>
+                <input class="form-control form-control-sm" type="number" id="aj-capacidade" min="1" max="200" step="1">
+              </div>
+              <div class="col-6">
+                <label class="form-label" for="aj-equipMax">Projetor máx. (°C)</label>
+                <input class="form-control form-control-sm" type="number" id="aj-equipMax" min="20" max="90" step="0.5">
+              </div>
+              <div class="col-6">
+                <label class="form-label" for="aj-umidMin">Umidade mín. (%)</label>
+                <input class="form-control form-control-sm" type="number" id="aj-umidMin" min="0" max="100">
+              </div>
+              <div class="col-6">
+                <label class="form-label" for="aj-umidMax">Umidade máx. (%)</label>
+                <input class="form-control form-control-sm" type="number" id="aj-umidMax" min="0" max="100">
+              </div>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+              <button type="submit" class="btn btn-sm btn-primary">
+                <i class="bi bi-check2" aria-hidden="true"></i> Salvar ajustes
+              </button>
+              <span class="legenda m-0" id="ajustes-ok" hidden>Ajustes salvos.</span>
+            </div>
+          </form>
+          <p class="legenda">Temperatura da ventilação, luz mínima e desligamento programado ficam em
+            "Regras e horários", na página Sala.</p>
+        </div>
+      </div>
+    </div>
+
+
+    <div class="bloco" id="bloco-mensagens" hidden>
+      <h3>Mensagens com a placa</h3>
+      <pre class="mensagens mt-2 mb-0 p-2 small" id="mensagens"></pre>
+    </div>
+  </section>
+
+</div>
+
+<script src="assets/vendor/firebase/firebase-app-compat.js"></script>
+<script src="assets/vendor/firebase/firebase-auth-compat.js"></script>
+<script src="assets/vendor/firebase/firebase-database-compat.js"></script>
+<script src="assets/js/firebase-config.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/serial.js"></script>
+<script src="assets/js/mapa.js"></script>
+<script src="assets/js/mapa-extras.js"></script>
+</body>
+</html>

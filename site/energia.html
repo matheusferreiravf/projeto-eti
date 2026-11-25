@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="assets/img/logo-eti.svg">
+<title>Energia — ETI</title>
+<link href="assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+<link href="assets/vendor/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet">
+<link href="assets/css/eti.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="pagina">
+
+  <div class="topo">
+    <a class="marca" href="dashboard.html"><img src="assets/img/logo-eti.svg" alt="">ETI</a>
+    <nav class="menu" data-menu aria-label="Seções"></nav>
+  </div>
+
+  <header class="cabecalho">
+    <h1>Energia</h1>
+  </header>
+
+  <p class="resumo" id="resumo"></p>
+
+  <section class="secao">
+    <h2>Equipamentos</h2>
+
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead>
+          <tr>
+            <th>Equipamento</th>
+            <th class="n" style="width:72px">Qtd.</th>
+            <th class="n" style="width:92px">Watts</th>
+            <th class="n" style="width:92px">Horas/dia</th>
+            <th class="n" style="width:96px">kWh/mês</th>
+            <th class="n" style="width:112px">Custo/mês</th>
+            <th style="width:44px"><span class="visually-hidden">Ações</span></th>
+          </tr>
+        </thead>
+        <tbody id="linhas"></tbody>
+        <tfoot>
+          <tr>
+            <td colspan="4">Total</td>
+            <td class="n" id="total-kwh"></td>
+            <td class="n" id="total-custo"></td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <form id="form-novo" class="row g-2 align-items-end mt-3 pt-3 border-top">
+      <div class="col-12 col-md">
+        <label class="form-label" for="novo-nome">Adicionar equipamento</label>
+        <input class="form-control" type="text" id="novo-nome" placeholder="Lousa digital" required>
+      </div>
+      <div class="col-4 col-md-2">
+        <label class="form-label" for="novo-qtd">Qtd.</label>
+        <input class="form-control text-end" type="number" id="novo-qtd" value="1" min="1" step="1">
+      </div>
+      <div class="col-4 col-md-2">
+        <label class="form-label" for="novo-pot">Watts</label>
+        <input class="form-control text-end" type="number" id="novo-pot" value="100" min="1" step="1">
+      </div>
+      <div class="col-4 col-md-2">
+        <label class="form-label" for="novo-horas">Horas/dia</label>
+        <input class="form-control text-end" type="number" id="novo-horas" value="4" min="0" max="24" step="0.5">
+      </div>
+      <div class="col-12 col-md-auto">
+        <button type="submit" class="btn btn-primary w-100">
+          <i class="bi bi-plus-lg" aria-hidden="true"></i> Adicionar
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <section class="secao">
+    <h2>Tarifa e calendário</h2>
+    <div class="row g-3">
+      <div class="col-sm-6">
+        <label class="form-label" for="tarifa">Tarifa de energia (R$ por kWh)</label>
+        <input class="form-control" type="number" id="tarifa" step="0.01" min="0.1">
+      </div>
+      <div class="col-sm-6">
+        <label class="form-label" for="dias">Dias letivos no mês</label>
+        <input class="form-control" type="number" id="dias" min="1" max="31" step="1">
+      </div>
+    </div>
+  </section>
+
+  <div class="row g-3 mb-3">
+
+    <div class="col-lg-6">
+      <section class="secao">
+        <h2>Economia com as automações</h2>
+        <div class="mb-3" style="max-width:280px">
+          <label class="form-label" for="horas-evitadas">Horas por dia que a sala ficava ligada vazia</label>
+          <input class="form-control" type="number" id="horas-evitadas" value="2" min="0" max="12" step="0.5">
+        </div>
+        <div class="destaque">
+          <span class="rotulo">Economia mensal estimada</span>
+          <span class="valor" id="economia-mes"></span>
+          <dl class="dados">
+            <div><dt>Energia evitada</dt><dd id="economia-kwh"></dd></div>
+            <div><dt>Em doze meses</dt><dd id="economia-ano"></dd></div>
+          </dl>
+        </div>
+      </section>
+    </div>
+
+    <div class="col-lg-6">
+      <section class="secao">
+        <h2>Energia solar</h2>
+        <div class="row g-3 mb-3">
+          <div class="col-sm-6">
+            <label class="form-label" for="custo-instalacao">Custo da instalação (R$)</label>
+            <input class="form-control" type="number" id="custo-instalacao" step="500" min="1000">
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label" for="geracao">Geração mensal (kWh)</label>
+            <input class="form-control" type="number" id="geracao" step="10" min="10">
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label" for="vida-util">Vida útil considerada (anos)</label>
+            <input class="form-control" type="number" id="vida-util" step="1" min="5" max="40">
+          </div>
+        </div>
+
+        <div class="destaque">
+          <span class="rotulo">Tempo de retorno</span>
+          <span class="valor" id="payback"></span>
+          <p id="payback-nota"></p>
+          <dl class="dados">
+            <div><dt>Economia mensal</dt><dd id="solar-mes"></dd></div>
+            <div><dt>Consumo coberto</dt><dd id="solar-cobertura"></dd></div>
+            <div><dt>Saldo ao fim da vida útil</dt><dd id="solar-saldo"></dd></div>
+          </dl>
+        </div>
+      </section>
+    </div>
+
+  </div>
+
+  <section class="secao">
+    <h2>Retorno do investimento solar</h2>
+    <div class="grafico"><canvas id="grafico"></canvas></div>
+    <p class="legenda">Saldo acumulado do investimento solar ao longo dos anos. O cruzamento com
+      a linha horizontal é o ponto em que o sistema se paga.</p>
+  </section>
+
+  <p class="nota">
+    Estimativas calculadas por potência nominal e tempo de uso, conforme o modelo da
+    fundamentação teórica do projeto. A geração solar abate no máximo o consumo da sala,
+    porque o protótipo não considera injeção na rede.
+  </p>
+
+</div>
+
+<script src="assets/vendor/chart.umd.js"></script>
+<script src="assets/vendor/firebase/firebase-app-compat.js"></script>
+<script src="assets/vendor/firebase/firebase-auth-compat.js"></script>
+<script src="assets/vendor/firebase/firebase-database-compat.js"></script>
+<script src="assets/js/firebase-config.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/energia.js"></script>
+</body>
+</html>

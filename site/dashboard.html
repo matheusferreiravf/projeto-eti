@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="assets/img/logo-eti.svg">
+  <title>Sala — ETI</title>
+  <link href="assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="assets/css/eti.css" rel="stylesheet">
+  <script src="https://unpkg.com/vue@3.4.38/dist/vue.global.js"></script>
+  <script>window.Vue || document.write('<script src="assets/vendor/vue.global.prod.js"><\/script>')</script>
+</head>
+
+<body>
+
+  <div class="pagina">
+
+    <div class="topo">
+      <a class="marca" href="dashboard.html"><img src="assets/img/logo-eti.svg" alt="">ETI</a>
+      <nav class="menu" data-menu aria-label="Seções"></nav>
+    </div>
+
+    <!-- Raiz do Vue: tudo daqui para baixo é renderizado a partir dos canais do ETI.data -->
+    <div id="app" v-cloak>
+
+      <header class="cabecalho">
+        <h1>{{ sala.nome }}</h1>
+        <p v-if="pronto">
+          {{ sala.bloco }}.
+          <status-sala
+            :ocupada="ocupacao.ocupada"
+            :modo-economia="config.modoEconomia"
+            :modo-manual="config.modoManual"
+            :horario-economia="config.horarioEconomia"
+            :motivo-economia="config.motivoEconomia"
+            :marcada-manual="ocupacao.manual"
+            :marcada-ate="ocupacao.ate"></status-sala>
+        </p>
+      </header>
+
+      <template v-if="pronto">
+
+        <section class="secao alertas" :class="{ 'com-alerta': alertas.ativos.length }" aria-live="polite">
+          <h2>Alertas da sala</h2>
+          <div v-if="alertas.ativos.length">
+            <div class="alerta" v-for="a in alertas.ativos" :key="a.id">
+              <strong>{{ a.titulo }}</strong>
+              <span>{{ a.texto }}</span>
+              <span class="sub">Desde as {{ hora(a.desde) }}</span>
+            </div>
+          </div>
+          <p v-else class="legenda m-0">Nenhum alerta. Temperatura, umidade, luz e lotação dentro dos limites.</p>
+        </section>
+
+        <div class="row g-3 mb-3">
+          <div class="col-6 col-md-4 col-xl">
+            <card-leitura rotulo="Temperatura" :valor="num(telemetria.temp, 1)" unidade="°C"
+              :fora-do-limite="foraTemp"></card-leitura>
+          </div>
+          <div class="col-6 col-md-4 col-xl">
+            <card-leitura rotulo="Umidade" :valor="telemetria.umid" unidade="%"
+              :fora-do-limite="foraUmid"></card-leitura>
+          </div>
+          <div class="col-6 col-md-4 col-xl">
+            <card-leitura rotulo="Luminosidade" :valor="num(telemetria.lux)" unidade="lux"
+              :fora-do-limite="foraLux"></card-leitura>
+          </div>
+          <div class="col-6 col-md-6 col-xl">
+            <card-leitura rotulo="Lotação" :valor="telemetria.pessoas" :unidade="'/ ' + sala.capacidade"
+              :fora-do-limite="foraPessoas">
+              <div class="barra" aria-hidden="true">
+                <span :class="{ cheia: lotacaoCheia }" :style="{ width: lotacaoPct + '%' }"></span>
+              </div>
+            </card-leitura>
+          </div>
+          <div class="col-12 col-md-6 col-xl">
+            <card-leitura rotulo="Potência estimada" :valor="num(telemetria.potencia)" unidade="W"></card-leitura>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+
+          <div class="col-lg-6">
+            <section class="secao">
+              <h2>Controle da sala</h2>
+
+              <div class="bloco">
+                <h3>Ocupação</h3>
+                <div class="seletor" role="group" aria-label="Ocupação da sala">
+                  <button type="button" :aria-pressed="String(modoOcupacao === 'grade')" @click="setOcupacao(null)">Pela grade</button>
+                  <button type="button" :aria-pressed="String(modoOcupacao === 'ocupada')" @click="setOcupacao(true)">Ocupada</button>
+                  <button type="button" :aria-pressed="String(modoOcupacao === 'vazia')" @click="setOcupacao(false)">Vazia</button>
+                </div>
+              </div>
+
+              <div class="bloco">
+                <h3>Modo economia</h3>
+                <p class="legenda mt-0">{{ notaEconomia }}</p>
+                <button type="button" class="btn mt-2"
+                  :class="config.economiaForcada ? 'btn-primary' : 'btn-outline-primary'"
+                  @click="alternarEconomia">
+                  <i class="bi bi-power" aria-hidden="true"></i>
+                  {{ config.economiaForcada ? 'Desativar modo economia' : 'Ativar modo economia' }}
+                </button>
+              </div>
+
+              <div class="bloco">
+                <h3>Equipamentos</h3>
+                <chave-equipamento v-for="eq in equipamentos" :key="eq.id"
+                  :nome="eq.nome" :detalhe="eq.detalhe" :potencia="eq.potencia * eq.qtd"
+                  :ligado="!!estado[eq.id]" :travado="config.modoEconomia"
+                  @alternar="alternar(eq.id)"></chave-equipamento>
+                <p class="legenda">{{ notaManual }}</p>
+                <button v-if="config.modoManual && !config.modoEconomia" type="button"
+                  class="btn btn-outline-primary mt-2" @click="retomar">
+                  <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Retomar automações
+                </button>
+              </div>
+            </section>
+          </div>
+
+          <div class="col-lg-6">
+            <section class="secao">
+              <h2>Regras e horários</h2>
+
+              <form @submit.prevent="salvarRegras" @focusin="editando = true" @focusout="editando = false">
+                <div class="row g-3 mb-3">
+                  <div class="col-sm-6">
+                    <label class="form-label" for="limiteTemp">Ventilação liga acima de (°C)</label>
+                    <input class="form-control" type="number" id="limiteTemp" min="16" max="35" step="0.5"
+                      v-model.number="form.limiteTemp">
+                  </div>
+                  <div class="col-sm-6">
+                    <label class="form-label" for="limiteLux">Luz liga abaixo de (lux)</label>
+                    <input class="form-control" type="number" id="limiteLux" min="0" max="1200" step="10"
+                      v-model.number="form.limiteLux">
+                  </div>
+                  <div class="col-sm-6">
+                    <label class="form-label" for="horarioEconomia">Desligamento programado</label>
+                    <input class="form-control" type="time" id="horarioEconomia" v-model="form.horarioEconomia">
+                  </div>
+                </div>
+
+                <div class="d-flex align-items-center gap-3">
+                  <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check2" aria-hidden="true"></i> Salvar regras
+                  </button>
+                  <span class="legenda m-0" v-if="regrasSalvas">Regras salvas.</span>
+                </div>
+              </form>
+
+              <div class="bloco">
+                <h3>Horário de aulas</h3>
+                <p class="legenda mt-0 mb-2">Fora destes horários a sala conta como vazia e o sistema
+                  desliga os equipamentos.</p>
+                <table class="table">
+                  <tbody>
+                    <tr v-for="f in config.grade" :key="f.dia + f.inicio">
+                      <td>{{ dias[f.dia] }}</td>
+                      <td class="n">{{ f.inicio }} às {{ f.fim }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+        </div>
+
+        <section class="secao">
+          <h2>Histórico</h2>
+          <grafico-linha :rotulos="graficoRotulos" :series="graficoSeries"></grafico-linha>
+          <p class="legenda">Temperatura em azul-escuro e luminosidade em azul-claro, nas últimas horas.</p>
+        </section>
+
+        <p class="nota">
+          A potência é estimada pela soma da potência nominal das cargas ligadas, e a lotação vem do
+          leitor de cartões. Os dados vêm do Arduino da sala e ficam guardados no Firebase.
+          <button type="button" class="link-acao nao-imprime" @click="reiniciar">
+            <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Reiniciar dados
+          </button>
+        </p>
+
+      </template>
+    </div>
+
+  </div>
+
+  <script src="assets/vendor/chart.umd.js"></script>
+  <script src="assets/vendor/firebase/firebase-app-compat.js"></script>
+  <script src="assets/vendor/firebase/firebase-auth-compat.js"></script>
+  <script src="assets/vendor/firebase/firebase-database-compat.js"></script>
+  <script src="assets/js/firebase-config.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script src="assets/js/data.js"></script>
+
+  <!-- 1. Cria a aplicação (const app = Vue.createApp) -->
+  <script src="assets/js/dashboard.js"></script>
+  <!-- 2. Registra os componentes (app.component) -->
+  <script src="assets/js/components/CardLeitura.js"></script>
+  <script src="assets/js/components/ChaveEquipamento.js"></script>
+  <script src="assets/js/components/StatusSala.js"></script>
+  <script src="assets/js/components/GraficoLinha.js"></script>
+  <!-- 3. Monta a aplicação na div #app -->
+  <script>
+    const mountedApp = app.mount('#app')
+  </script>
+</body>
+
+</html>

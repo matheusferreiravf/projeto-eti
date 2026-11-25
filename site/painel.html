@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="assets/img/logo-eti.svg">
+<title>Painel — ETI</title>
+<link href="assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+<link href="assets/vendor/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet">
+<link href="assets/css/eti.css" rel="stylesheet">
+
+<!-- Vue 3 pela CDN (unpkg), como na aula -->
+<script src="https://unpkg.com/vue@3.4.38/dist/vue.global.js"></script>
+<!-- Plano B: se a CDN não carregar (sem internet), usa a cópia local -->
+<script>window.Vue || document.write('<script src="assets/vendor/vue.global.prod.js"><\/script>')</script>
+</head>
+<body>
+
+<!-- Raiz do Vue. Tecla F: tela cheia. Setas: passam os avisos na mão. -->
+<main class="tv" id="app" v-cloak>
+
+  <header class="tv-topo">
+    <span class="d-flex align-items-center gap-3">
+      <img src="assets/img/logo-eti.svg" alt="">
+      <span>{{ sala.nome }}, {{ sala.bloco }}</span>
+    </span>
+    <span class="tv-hora">{{ hora }}</span>
+  </header>
+
+  <section class="tv-corpo" :class="{ 'tv-alerta': atual && atual.alerta }" aria-live="polite">
+    <span class="tv-tipo" v-if="atual && atual.alerta">Alerta da sala</span>
+    <h2>{{ atual ? atual.titulo : sala.nome }}</h2>
+    <p>{{ atual ? atual.texto : 'Nenhum comunicado publicado.' }}</p>
+  </section>
+
+  <footer class="tv-rodape" v-if="telemetria">
+    <card-leitura escuro rotulo="Temperatura" :valor="num(telemetria.temp, 1)" unidade="°C"
+      :fora-do-limite="config && telemetria.temp > config.limiteTemp"></card-leitura>
+    <card-leitura escuro rotulo="Umidade" :valor="telemetria.umid" unidade="%"></card-leitura>
+    <card-leitura escuro rotulo="Luminosidade" :valor="num(telemetria.lux)" unidade="lux"></card-leitura>
+    <card-leitura escuro rotulo="Lotação" :valor="telemetria.pessoas" :unidade="'/ ' + sala.capacidade"
+      :fora-do-limite="sala.capacidade > 0 && telemetria.pessoas > sala.capacidade"></card-leitura>
+    <span class="tv-estado" v-if="config">
+      <status-sala curto :ocupada="ocupada" :modo-economia="config.modoEconomia"></status-sala>
+    </span>
+  </footer>
+
+</main>
+
+<script src="assets/vendor/firebase/firebase-app-compat.js"></script>
+<script src="assets/vendor/firebase/firebase-auth-compat.js"></script>
+<script src="assets/vendor/firebase/firebase-database-compat.js"></script>
+<script src="assets/js/firebase-config.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/data.js"></script>
+
+<!-- 1. Cria a aplicação (const app = Vue.createApp) -->
+<script src="assets/js/painel.js"></script>
+<!-- 2. Registra os componentes (app.component) -->
+<script src="assets/js/components/CardLeitura.js"></script>
+<script src="assets/js/components/StatusSala.js"></script>
+<!-- 3. Monta a aplicação na div #app -->
+<script>
+  const mountedApp = app.mount('#app')
+</script>
+</body>
+</html>

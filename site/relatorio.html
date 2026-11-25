@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="assets/img/logo-eti.svg">
+<title>Relatório — ETI</title>
+<link href="assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+<link href="assets/vendor/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet">
+<link href="assets/css/eti.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="pagina">
+
+  <div class="topo">
+    <a class="marca" href="dashboard.html"><img src="assets/img/logo-eti.svg" alt="">ETI</a>
+    <nav class="menu" data-menu aria-label="Seções"></nav>
+  </div>
+
+  <div class="laudo">
+
+    <header class="cabecalho">
+      <h1>Relatório de consumo</h1>
+      <p id="identificacao"></p>
+      <div class="d-flex flex-wrap gap-2 mt-3 nao-imprime">
+        <button type="button" class="btn btn-primary" id="btn-pdf">
+          <i class="bi bi-printer" aria-hidden="true"></i> Exportar PDF
+        </button>
+        <button type="button" class="btn btn-outline-primary" id="btn-csv">
+          <i class="bi bi-download" aria-hidden="true"></i> Baixar CSV
+        </button>
+      </div>
+    </header>
+
+    <h2>Condições ambientais</h2>
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr><th>Indicador</th><th class="n">Mínima</th><th class="n">Média</th><th class="n">Máxima</th></tr>
+        </thead>
+        <tbody id="ambiente"></tbody>
+      </table>
+    </div>
+
+    <h2>Consumo por equipamento</h2>
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Equipamento</th>
+            <th class="n">Qtd.</th>
+            <th class="n">Watts</th>
+            <th class="n">Horas/dia</th>
+            <th class="n">kWh/mês</th>
+            <th class="n">Custo/mês</th>
+          </tr>
+        </thead>
+        <tbody id="consumo"></tbody>
+        <tfoot>
+          <tr>
+            <td colspan="4">Total</td>
+            <td class="n" id="total-kwh"></td>
+            <td class="n" id="total-custo"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <h2>Parâmetros de automação</h2>
+    <table class="table"><tbody id="parametros"></tbody></table>
+
+    <h2>Viabilidade de energia solar</h2>
+    <table class="table"><tbody id="viabilidade"></tbody></table>
+
+    <p class="nota">
+      Os valores de consumo são estimados pela potência nominal dos equipamentos multiplicada
+      pelo tempo de uso. As condições ambientais vêm das leituras registradas pelos sensores.
+      O tempo de retorno fotovoltaico é uma simulação de apoio à decisão.
+    </p>
+
+  </div>
+
+  <section class="secao mt-3 mb-3">
+    <h2>Registro da sala</h2>
+    <p class="legenda mt-0">Tudo o que o Arduino contou: entradas e saídas pelo cartão, movimentos, lâmpada, ar e alertas.</p>
+    <div class="d-flex flex-wrap gap-2 mb-3 nao-imprime">
+      <button type="button" class="btn btn-primary" id="btn-csv-eventos">
+        <i class="bi bi-download" aria-hidden="true"></i> Baixar eventos (CSV)
+      </button>
+      <button type="button" class="btn btn-outline-primary" id="btn-csv-historico">
+        <i class="bi bi-download" aria-hidden="true"></i> Baixar leituras (CSV)
+      </button>
+      <button type="button" class="btn btn-outline-primary" id="btn-limpar">
+        <i class="bi bi-trash" aria-hidden="true"></i> Apagar registro
+      </button>
+    </div>
+    <div id="eventos"><p class="legenda">Carregando…</p></div>
+  </section>
+
+  <p class="nota">Mostra os 80 eventos mais recentes. As leituras do CSV são um ponto a cada 30 s da última hora.</p>
+
+</div>
+
+<script src="assets/vendor/firebase/firebase-app-compat.js"></script>
+<script src="assets/vendor/firebase/firebase-auth-compat.js"></script>
+<script src="assets/vendor/firebase/firebase-database-compat.js"></script>
+<script src="assets/js/firebase-config.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/relatorio.js"></script>
+<script src="assets/js/relatorio-registro.js"></script>
+</body>
+</html>
